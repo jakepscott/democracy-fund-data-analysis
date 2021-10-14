@@ -6,6 +6,7 @@ library(janitor)
 library(sjlabelled)
 library(glue)
 library(ggtext)
+library(showtext)
 
 # Load Data ---------------------------------------------------------------
 
@@ -37,7 +38,7 @@ folders <- folders_2019 %>%
   bind_rows(folders_2020)
 
 # Load all the dta files in all the folders
-data <- map_dfr(folders$value, load_func)
+  data <- map_dfr(folders$value, load_func)
 
 
 # Right track plot --------------------------------------------------------
@@ -53,19 +54,38 @@ right_direction <- data %>%
   ungroup()
 
 
+recessions.df = read.table(textConnection(
+  "Peak, Trough
+2020-02-01, 2020-04-01"), sep=',',
+colClasses=c('Date', 'Date'), header=TRUE)
+
+font_add_google("Roboto", "roboto")
+
 right_direction %>% 
-  ggplot(aes(start_date, percent, color = right_track)) +
-  geom_line(show.legend = F) +
+  ggplot() +
+  geom_rect(data=recessions.df, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='grey', alpha=0.5) +
+  geom_line(aes(start_date, percent, color = right_track),
+            show.legend = F,
+            lwd = 1) +
   scale_y_continuous(labels = function(y){glue("{y}%")}) +
   scale_color_manual(values = c("blue","red","grey")) +
   scale_x_date(date_breaks = "2 months") +
   labs(title = "Percent of people who say the country is on the <span style = 'color: blue;'>right</span> versus <span style = 'color: red;'>wrong</span> track",
+       subtitle = "Grey shading indicates the Covid recession",
+       caption = "Plot: @jakepscott2020 | Data: Democracy Fund",
        y = NULL,
        x = NULL) +
-  theme_minimal() +
-  theme(plot.title.position = "plot",
-        plot.title = element_markdown())
+  theme_minimal(base_family = "roboto", 
+                base_size = 12) +
+  theme(plot.title = element_markdown(face = "bold", size = rel(1.5)),
+        plot.subtitle = element_text(face = "plain", size = rel(1.1), color = "grey20"),
+        plot.caption = element_text(size = rel(0.9), face="italic", 
+                                    color = "grey40"),
+        strip.text = element_text(face="bold",size = rel(1)),
+        legend.title = element_text(size = rel(.8)),
+        plot.title.position = "plot", 
+        axis.title.y = element_blank(),
+        legend.position = "none")
     
-
-
-
+ggsave(here("figures/right-track.png"), dpi = 600, bg = "white",
+       height = 6, width = 6*1.62, units = "in")
